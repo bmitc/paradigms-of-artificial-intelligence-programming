@@ -1,0 +1,337 @@
+<!-- livebook:{"persist_outputs":true} -->
+
+# Paradigms of Artifical Intelligence Programming
+
+```elixir
+Mix.install([:uuid, :kino])
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+:ok
+```
+
+## Chapter 2: A Simple Lisp Program
+
+```elixir
+defmodule PhraseStructureGrammar1 do
+  def sentence(), do: (noun_phrase() ++ verb_phrase()) |> format_sentence()
+  def noun_phrase(), do: article() ++ noun()
+  def verb_phrase(), do: verb() ++ noun_phrase()
+  def article(), do: one_of(["the", "a"])
+  def noun(), do: one_of(["man", "ball", "woman", "table"])
+  def verb(), do: one_of(["hit", "took", "saw", "liked"])
+
+  def one_of(list) do
+    list
+    |> Enum.uniq()
+    |> Enum.random()
+    |> List.wrap()
+  end
+
+  def format_sentence([first_word | rest]) do
+    [String.capitalize(first_word) | rest]
+    |> Enum.join(" ")
+    |> Kernel.<>(".")
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, PhraseStructureGrammar1, <<70, 79, 82, 49, 0, 0, 13, ...>>, {:format_sentence, 1}}
+```
+
+```elixir
+PhraseStructureGrammar1.sentence()
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+"The woman hit a table."
+```
+
+```elixir
+PhraseStructureGrammar1.sentence()
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+"The ball liked a man."
+```
+
+```elixir
+PhraseStructureGrammar1.sentence()
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+"The ball took a man."
+```
+
+```elixir
+PhraseStructureGrammar1.sentence()
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+"The table hit the man."
+```
+
+```elixir
+PhraseStructureGrammar1.noun_phrase()
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+["the", "man"]
+```
+
+```elixir
+PhraseStructureGrammar1.verb_phrase()
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+["liked", "the", "man"]
+```
+
+```elixir
+defmodule PhraseStructureGrammar2 do
+  def adj_star() do
+    if Enum.random(0..1) == 0 do
+      []
+    else
+      adj() ++ adj_star()
+    end
+  end
+
+  def pp_star() do
+    if Enum.random([true, nil]) do
+      pp() ++ pp_star()
+    else
+      []
+    end
+  end
+
+  def noun_phrase(), do: Enum.concat([article(), adj_star(), noun(), pp_star()])
+  def pp(), do: prep() ++ noun_phrase()
+  def adj(), do: one_of(["big", "little", "blue", "green", "adiabatic"])
+  def prep(), do: one_of(["to", "in", "by", "with", "on"])
+
+  def sentence(), do: (noun_phrase() ++ verb_phrase()) |> format_sentence()
+  def verb_phrase(), do: verb() ++ noun_phrase()
+  def article(), do: one_of(["the", "a"])
+  def noun(), do: one_of(["man", "ball", "woman", "table"])
+  def verb(), do: one_of(["hit", "took", "saw", "liked"])
+
+  def one_of(list) do
+    list
+    |> Enum.uniq()
+    |> Enum.random()
+    |> List.wrap()
+  end
+
+  def format_sentence([first_word | rest]) do
+    [String.capitalize(first_word) | rest]
+    |> Enum.join(" ")
+    |> Kernel.<>(".")
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, PhraseStructureGrammar2, <<70, 79, 82, 49, 0, 0, 18, ...>>, {:format_sentence, 1}}
+```
+
+```elixir
+PhraseStructureGrammar2.sentence()
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+"A table with the table by the ball to a big table to the ball to a man in a table in the little man by the big adiabatic woman on the blue table in the ball by the man to a big green ball on a ball by a little woman by a green man in the big woman to a ball on a green big green blue table with the little adiabatic woman on the little little little man on the table on a woman in the table to a green ball with a adiabatic little little woman with a little green table liked a adiabatic little big big ball on a little man with the man with the blue adiabatic man by the man in a little big table on a table by a table to the man by the woman on a ball."
+```
+
+```elixir
+defmodule RuleBasedGrammar do
+  # def left_hand_side ~> right_hand_side, do: %{left_hand_side => right_hand_side}
+
+  @doc """
+  A grammar for a trivial subset of English
+  """
+  def simple_grammar() do
+    %{
+      sentence: [[:noun_phrase, :verb_phrase]],
+      noun_phrase: [[:article, :noun]],
+      verb_phrase: [[:verb, :noun_phrase]],
+      article: ["the", "a"],
+      noun: ["man", "ball", "woman", "table"],
+      verb: ["hit", "took", "saw", "liked"]
+    }
+  end
+
+  @doc """
+  A larger grammar that includes adjectives, prepositional phrases, proper names, and pronouns
+  """
+  def bigger_grammar() do
+    %{
+      sentence: [[:noun_phrase, :verb_phrase]],
+      noun_phrase: [[:article, :adj_star, :noun, :pp_star], [:name], [:pronoun]],
+      verb_phrase: [[:verb, :noun_phrase, :pp_star]],
+      pp_star: [[], [:pp, :pp_star]],
+      adj_star: [[], [:adj, :adj_star]],
+      pp: [[:prep, :noun_phrase]],
+      prep: ["to", "in", "by", "with", "on"],
+      adj: ["big", "little", "blue", "green", "adiabatic"],
+      article: ["the", "a"],
+      name: ["Pat", "Kim", "Lee", "Terry", "Robin"],
+      noun: ["man", "ball", "woman", "table"],
+      verb: ["hit", "took", "saw", "liked"],
+      pronoun: ["he", "she", "it", "these", "those", "that"]
+    }
+  end
+
+  @doc """
+  Return a list of the possible rewrites for this category
+  """
+  def rewrites(category, grammar), do: Map.get(grammar, category, [])
+
+  @doc """
+  Generate a random sentence or phrase
+  """
+  def generate(phrase, grammar) do
+    cond do
+      is_list(phrase) ->
+        phrase
+        |> Enum.map(&generate(&1, grammar))
+        |> List.flatten()
+
+      is_atom(phrase) ->
+        phrase
+        |> rewrites(grammar)
+        |> Enum.random()
+        |> generate(grammar)
+
+      is_binary(phrase) ->
+        [phrase]
+    end
+  end
+
+  @doc """
+  Generate a random sentence or phrase but return as a sentence parse tree
+  """
+  def generate_tree(phrase, grammar) do
+    cond do
+      is_list(phrase) ->
+        phrase
+        |> Enum.map(&generate_tree(&1, grammar))
+
+      is_atom(phrase) ->
+        rewrite =
+          phrase
+          |> rewrites(grammar)
+          |> Enum.random()
+          |> generate_tree(grammar)
+
+        if Enum.empty?(rewrite) do
+          []
+        else
+          [phrase | rewrite]
+        end
+
+      is_binary(phrase) ->
+        [phrase]
+    end
+  end
+
+  def format_sentence([first_word | rest]) do
+    [String.capitalize(first_word) | rest]
+    |> Enum.join(" ")
+    |> Kernel.<>(".")
+  end
+
+  def render_sentence_tree([:sentence]) do
+  end
+
+  def tree_to_markdown([]), do: ""
+  def tree_to_markdown({guid, text}) when is_atom(text), do: """#{guid}["#{to_string(text)}"]"""
+  def tree_to_markdown({guid, text}) when is_binary(text), do: """#{guid}"""
+
+  def update_nodes([]), do: []
+
+  def update_nodes(leaf) when not is_list(leaf) and is_binary(leaf), do: {guid(), to_string(leaf)}
+
+  def update_nodes([node | children]) do
+    [{guid(), node} | Enum.map(children, &update_nodes/1)]
+  end
+
+  def guid(), do: make_ref() |> inspect()
+end
+```
+
+```elixir
+:sentence
+|> RuleBasedGrammar.generate(RuleBasedGrammar.simple_grammar())
+|> RuleBasedGrammar.format_sentence()
+```
+
+```elixir
+:sentence
+|> RuleBasedGrammar.generate(RuleBasedGrammar.bigger_grammar())
+|> RuleBasedGrammar.format_sentence()
+```
+
+```elixir
+make_ref() |> inspect |> String.to_integer()
+```
+
+```elixir
+:sentence
+|> RuleBasedGrammar.generate_tree(RuleBasedGrammar.bigger_grammar())
+|> RuleBasedGrammar.update_nodes()
+```
+
+```elixir
+Kino.Mermaid.new("""
+  graph TD
+
+  :sentence --- :noun_phrase
+  :noun_phrase --- :pronoun
+  :pronoun --- it["#quot;it#quot;"]
+
+  :sentence --- :verb_phrase
+  :verb_phrase --- :verb
+  :verb --- took["#quot;took#quot;"]
+  :verb_phrase --- :name
+  :name --- lee["#quot;Lee#quot;"]
+""")
+```
+
+<!-- livebook:{"output":true} -->
+
+```mermaid
+  graph TD
+
+  :sentence --- :noun_phrase
+  :noun_phrase --- :pronoun
+  :pronoun --- it["#quot;it#quot;"]
+
+  :sentence --- :verb_phrase
+  :verb_phrase --- :verb
+  :verb --- took["#quot;took#quot;"]
+  :verb_phrase --- :name
+  :name --- lee["#quot;Lee#quot;"]
+
+```
